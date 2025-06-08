@@ -43,6 +43,9 @@ resources:
     cpu: "500m"
 ```
 - Consider implementing Horizontal Pod Autoscaler (HPA).
+```
+kubectl autoscale deployment <deployment-name> --cpu-percent=80 --min=3 --max=10
+```
 - If node resources are exhausted, scale the cluster by adding more nodes.
 
 ---
@@ -57,9 +60,18 @@ I would use node draining to safely evict all Pods from the node before maintena
 
 **Steps:**
 - Mark the node as unschedulable (cordon).
+  ```
+  kubectl cordon <node-name>
+  ```
 - Drain the node (evict existing Pods).
+```
+kubectl drain <node-name> --ignore-daemonsets --delete-emptydir-data
+```
 - Perform maintenance on the node.
 - Make the node schedulable again.
+```
+kubectl uncordon <node-name>
+```
 
 ---
 
@@ -73,8 +85,45 @@ I would use Kubernetes Secrets combined with RBAC (Role-Based Access Control) fo
 
 **Implementation steps:**
 - Create a Secret with the sensitive data.
+```
+kubectl create secret generic db-credentials \
+  --from-literal=username=admin \
+  --from-literal=password=s3cur3p@ssw0rd
+```
+
 - Mount the Secret as environment variables or files in the Pod.
+```
+spec:
+  containers:
+  - name: app
+    image: my-app:1.0
+    env:
+    - name: DB_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: db-credentials
+          key: username
+    - name: DB_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: db-credentials
+          key: password
+```
+
 - Implement RBAC to restrict access to the Secret.
+
+```
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: default
+  name: secret-reader
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  resourceNames: ["db-credentials"]
+  verbs: ["get"]
+```
 - For production environments, consider using external secret management systems like HashiCorp Vault, AWS Secrets Manager, or GCP Secret Manager with appropriate operators.
 
 ---
@@ -89,8 +138,43 @@ I would use Persistent Volumes (PVs) and Persistent Volume Claims (PVCs) to ensu
 
 **Implementation:**
 - Define a StorageClass (if using dynamic provisioning).
+```
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: fast
+provisioner: kubernetes.io/aws-ebs
+parameters:
+  type: gp2
+```
 - Create a PVC.
+```
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: app-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: fast
+  resources:
+    requests:
+      storage: 10Gi
+```
 - Mount the PVC in the Pod.
+```
+spec:
+  containers:
+  - name: app
+    image: my-app:1.0
+    volumeMounts:
+    - mountPath: "/data"
+      name: app-data-volume
+  volumes:
+  - name: app-data-volume
+    persistentVolumeClaim:
+      claimName: app-data
+```
 - For stateful applications, consider using StatefulSets instead of Deployments to maintain stable network identities and storage.
 
 ---
@@ -112,7 +196,15 @@ I would use a combination of Kubernetes namespaces and ConfigMaps along with a t
 **Using Helm approach:**
 - Create a Helm chart with templates.
 - Use values files for environment-specific configurations.
+```
+values-dev.yaml
+values-staging.yaml
+values-prod.yaml
+```
 - Deploy to specific environment.
+```
+helm upgrade --install myapp ./mychart -f values-prod.yaml -n prod
+```
 
 ---
 
@@ -126,11 +218,31 @@ I would follow a systematic approach to diagnose and fix the network issues.
 
 **Troubleshooting steps:**
 - Verify the cluster's network plugin is functioning.
+```
+kubectl get pods -n kube-system | grep -E 'calico|flannel|weave|cilium'
+```
 - Check if CoreDNS is working properly.
+```
+kubectl get pods -n kube-system | grep coredns
+```
 - Test basic connectivity using debugging Pods.
+```
+kubectl run --rm -it network-test --image=nicolaka/netshoot -- /bin/bash
+```
 - From the debugging Pod, test connectivity.
+```
+ping <service-name>
+nslookup <service-name>
+curl <service-name>:<port>
+```
 - Check if NetworkPolicies are blocking traffic.
+```
+kubectl get networkpolicies --all-namespaces
+```
 - Verify service endpoints.
+```
+kubectl get endpoints <service-name>
+```
 
 **Common solutions:**
 - Restart the network plugin Pods.
@@ -150,8 +262,28 @@ I would use a rolling update strategy with readiness probes to ensure zero downt
 
 **Implementation:**
 - Configure the deployment with a proper update strategy.
+```
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+```
 - Implement a readiness probe to ensure traffic is only sent to ready Pods.
+```
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 10
+```
 - Deploy the updated application.
+```
+kubectl apply -f deployment.yaml
+```
 
 ---
 
