@@ -54,6 +54,7 @@ To recover from a corrupted or deleted state file in GCP:
 1. First, check if state file backups exist (if using a GCS backend with versioning enabled):
    ```bash
    gsutil ls -a gs://terraform-state-bucket/terraform.tfstate*
+```
 2. If a backup exists, restore it:
 ```
 gsutil cp gs://terraform-state-bucket/terraform.tfstate#1234567890 ./terraform.tfstate
