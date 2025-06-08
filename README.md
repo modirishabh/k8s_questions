@@ -1,1 +1,225 @@
 # k8s_questions
+# Kubernetes Interview Questions and Answers
+
+This repository contains common scenario-based Kubernetes interview questions and detailed answers to help you prepare for DevOps and SRE interviews.
+
+## Table of Contents
+
+1. [High Traffic and Pod Termination](#1-high-traffic-and-pod-termination)
+2. [Node Maintenance Without Disruption](#2-node-maintenance-without-disruption)
+3. [Secure Access to Sensitive Data](#3-secure-access-to-sensitive-data)
+4. [Data Persistence Across Pod Restarts](#4-data-persistence-across-pod-restarts)
+5. [Multi-Environment Deployments](#5-multi-environment-deployments)
+6. [Network Connectivity Issues](#6-network-connectivity-issues)
+7. [Zero-Downtime Updates](#7-zero-downtime-updates)
+8. [Additional Scenario-Based Questions](#8-additional-scenario-based-questions)
+
+---
+
+## 1. High Traffic and Pod Termination
+
+**Question:**  
+Your application suddenly experiences high traffic and your Kubernetes Pods are getting terminated. What could be the issue and how would you solve it?
+
+**Answer:**  
+This is likely a resource constraint issue where Pods are being OOM (Out of Memory) killed.
+
+**Steps to diagnose and fix:**
+- Check Pod status and events: `kubectl describe pod <pod-name>`
+- Look for OOMKilled or eviction events.
+- Review resource metrics: `kubectl top pods` and `kubectl top nodes`.
+- Adjust resource requests and limits in the deployment YAML.
+- Consider implementing Horizontal Pod Autoscaler (HPA).
+- If node resources are exhausted, scale the cluster by adding more nodes.
+
+---
+
+## 2. Node Maintenance Without Disruption
+
+**Question:**  
+You need to perform maintenance on a specific node without disrupting application availability. How would you proceed?
+
+**Answer:**  
+I would use node draining to safely evict all Pods from the node before maintenance.
+
+**Steps:**
+- Mark the node as unschedulable (cordon).
+- Drain the node (evict existing Pods).
+- Perform maintenance on the node.
+- Make the node schedulable again.
+
+---
+
+## 3. Secure Access to Sensitive Data
+
+**Question:**  
+Your application needs to access sensitive data like database credentials. What's the most secure way to handle this in Kubernetes?
+
+**Answer:**  
+I would use Kubernetes Secrets combined with RBAC (Role-Based Access Control) for secure credential management.
+
+**Implementation steps:**
+- Create a Secret with the sensitive data.
+- Mount the Secret as environment variables or files in the Pod.
+- Implement RBAC to restrict access to the Secret.
+- For production environments, consider using external secret management systems like HashiCorp Vault, AWS Secrets Manager, or GCP Secret Manager with appropriate operators.
+
+---
+
+## 4. Data Persistence Across Pod Restarts
+
+**Question:**  
+Your application needs to ensure data persistence across Pod restarts. How would you implement this?
+
+**Answer:**  
+I would use Persistent Volumes (PVs) and Persistent Volume Claims (PVCs) to ensure data persistence.
+
+**Implementation:**
+- Define a StorageClass (if using dynamic provisioning).
+- Create a PVC.
+- Mount the PVC in the Pod.
+- For stateful applications, consider using StatefulSets instead of Deployments to maintain stable network identities and storage.
+
+---
+
+## 5. Multi-Environment Deployments
+
+**Question:**  
+You need to deploy your application across multiple environments (dev, staging, prod) with different configurations. How would you manage this?
+
+**Answer:**  
+I would use a combination of Kubernetes namespaces and ConfigMaps along with a templating tool like Helm or Kustomize.
+
+**Using Kustomize approach:**
+- Create a base manifest structure.
+- Create overlay directories for each environment.
+- In each environment's `kustomization.yaml`, specify the base and patches.
+- Deploy to specific environment.
+
+**Using Helm approach:**
+- Create a Helm chart with templates.
+- Use values files for environment-specific configurations.
+- Deploy to specific environment.
+
+---
+
+## 6. Network Connectivity Issues
+
+**Question:**  
+Your Kubernetes cluster is experiencing network connectivity issues between Pods. How would you troubleshoot and resolve this?
+
+**Answer:**  
+I would follow a systematic approach to diagnose and fix the network issues.
+
+**Troubleshooting steps:**
+- Verify the cluster's network plugin is functioning.
+- Check if CoreDNS is working properly.
+- Test basic connectivity using debugging Pods.
+- From the debugging Pod, test connectivity.
+- Check if NetworkPolicies are blocking traffic.
+- Verify service endpoints.
+
+**Common solutions:**
+- Restart the network plugin Pods.
+- Check for restrictive NetworkPolicies and adjust them.
+- Ensure Services and Pods have matching labels and selectors.
+- Verify that cluster CIDR ranges don't overlap with existing network infrastructure.
+
+---
+
+## 7. Zero-Downtime Updates
+
+**Question:**  
+You need to perform a zero-downtime update of your application. How would you implement this?
+
+**Answer:**  
+I would use a rolling update strategy with readiness probes to ensure zero downtime.
+
+**Implementation:**
+- Configure the deployment with a proper update strategy.
+- Implement a readiness probe to ensure traffic is only sent to ready Pods.
+- Deploy the updated application.
+
+---
+
+## 8. Additional Scenario-Based Questions
+
+**Question 8.1:**  
+Your application needs to communicate with an external API that requires authentication credentials. What's the most secure way to handle this in Kubernetes?
+
+**Answer:**  
+For secure external API authentication, use Kubernetes Secrets combined with proper Pod security policies.
+
+**Implementation steps:**
+- Create a Secret containing the API credentials.
+- Mount the Secret as environment variables in the deployment.
+- Implement Pod Security Context to enhance security.
+- In production environments, consider using a service mesh like Istio for more advanced authentication mechanisms or external secret management systems.
+
+**Question 8.2:**  
+You notice that some of your Pods are frequently crashing and restarting. How would you troubleshoot and fix this issue?
+
+**Answer:**  
+I would follow a systematic approach to identify and resolve the Pod crashing issue.
+
+**Troubleshooting steps:**
+- Check the Pod status and restart count.
+- Examine Pod events and logs.
+- Look for common issues like OOMKilled, CrashLoopBackOff, Error/ImagePullBackOff.
+- Check resource utilization.
+- Debug with an ephemeral container if necessary.
+
+**Common solutions:**
+- Adjust resource limits if OOM killed.
+- Add proper liveness and readiness probes.
+- Fix application code or configuration issues identified in logs.
+
+**Question 8.3:**  
+You need to restrict Pod scheduling to specific nodes in your Kubernetes cluster. How would you achieve this?
+
+**Answer:**  
+I would use a combination of node selectors, affinity/anti-affinity rules, and taints/tolerations to control Pod scheduling.
+
+**Using Node Selectors (simplest approach):**
+- Label the nodes.
+- Use `nodeSelector` in the Pod spec.
+
+**Using Node Affinity (more flexible):**
+- Define node affinity rules in the Pod spec.
+
+**Using Taints and Tolerations:**
+- Taint the nodes.
+- Add tolerations to Pods that should be scheduled on those nodes.
+
+**Question 8.4:**  
+Your team needs to implement a canary deployment for a new version of your application. How would you set this up in Kubernetes?
+
+**Answer:**  
+I would implement a canary deployment using multiple Deployments with different versions and a Service to control traffic distribution.
+
+**Implementation steps:**
+- Create a stable deployment with the current version.
+- Create a canary deployment with the new version.
+- Create a Service that selects both deployments.
+- Gradually increase the canary replicas and decrease stable replicas as confidence builds.
+- For more advanced canary deployments, use a service mesh like Istio.
+
+**Question 8.5:**  
+You need to run a job that processes data in parallel across multiple Pods. How would you implement this in Kubernetes?
+
+**Answer:**  
+I would use a Kubernetes Job or CronJob with parallelism settings to process data concurrently.
+
+**Implementation for a one-time parallel job:**
+- Define the Job with parallelism and completions settings.
+- Use a template to specify the Pod configuration.
+
+**For recurring parallel jobs, use a CronJob:**
+- Define the CronJob with a schedule and job template.
+- Specify parallelism in the job template.
+
+**For more complex workloads, consider using workflows or batch processing frameworks.**
+
+---
+
+**Note:** These questions and answers are designed to cover key Kubernetes concepts and practical scenarios that are frequently asked by recruiters. Understanding these examples will help you demonstrate experience and problem-solving skills in Kubernetes during interviews.
