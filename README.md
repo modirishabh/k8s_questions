@@ -27,7 +27,11 @@ This is likely a resource constraint issue where Pods are being OOM (Out of Memo
 **Steps to diagnose and fix:**
 - Check Pod status and events: `kubectl describe pod <pod-name>`
 - Look for OOMKilled or eviction events.
-- Review resource metrics: `kubectl top pods` and `kubectl top nodes`.
+- Review resource metrics: 
+```
+kubectl top pod
+kubectl top nodes
+```
 - Adjust resource requests and limits in the deployment YAML.
 ```
 resources:
