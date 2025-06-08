@@ -12,7 +12,11 @@ This repository contains common scenario-based Kubernetes interview questions an
 5. [Multi-Environment Deployments](#5-multi-environment-deployments)
 6. [Network Connectivity Issues](#6-network-connectivity-issues)
 7. [Zero-Downtime Updates](#7-zero-downtime-updates)
-8. [Additional Scenario-Based Questions](#8-additional-scenario-based-questions)
+8. [Secure External API Communication](#8-secure-external-api-communication)
+9. [Troubleshooting Pod Crashes](#9-troubleshooting-pod-crashes)
+10. [Restricting Pod Scheduling](#10-restricting-pod-scheduling)
+11. [Implementing Canary Deployments](#11-implementing-canary-deployments)
+12. [Running Parallel Jobs](#12-running-parallel-jobs)
 
 ---
 
@@ -287,9 +291,9 @@ kubectl apply -f deployment.yaml
 
 ---
 
-## 8. Additional Scenario-Based Questions
+## 8. Secure External API Communication
 
-**Question 8.1:**  
+**Question :**  
 Your application needs to communicate with an external API that requires authentication credentials. What's the most secure way to handle this in Kubernetes?
 
 **Answer:**  
@@ -297,11 +301,47 @@ For secure external API authentication, use Kubernetes Secrets combined with pro
 
 **Implementation steps:**
 - Create a Secret containing the API credentials.
+  ```
+kubectl create secret generic api-credentials \
+  --from-literal=api-key=abc123 \
+  --from-literal=api-secret=xyz789
+```
 - Mount the Secret as environment variables in the deployment.
+```
+spec:
+  containers:
+  - name: app
+    image: my-app:1.0
+    env:
+    - name: API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: api-credentials
+          key: api-key
+    - name: API_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: api-credentials
+          key: api-secret
+```
 - Implement Pod Security Context to enhance security.
+
+```
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+  containers:
+  - name: app
+    image: my-app:1.0
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+``
 - In production environments, consider using a service mesh like Istio for more advanced authentication mechanisms or external secret management systems.
 
-**Question 8.2:**  
+## 9. Troubleshooting Pod Crashes
+**Question :**  
 You notice that some of your Pods are frequently crashing and restarting. How would you troubleshoot and fix this issue?
 
 **Answer:**  
@@ -319,7 +359,9 @@ I would follow a systematic approach to identify and resolve the Pod crashing is
 - Add proper liveness and readiness probes.
 - Fix application code or configuration issues identified in logs.
 
-**Question 8.3:**  
+## 10. Restricting Pod Scheduling
+
+**Question :**  
 You need to restrict Pod scheduling to specific nodes in your Kubernetes cluster. How would you achieve this?
 
 **Answer:**  
@@ -336,7 +378,8 @@ I would use a combination of node selectors, affinity/anti-affinity rules, and t
 - Taint the nodes.
 - Add tolerations to Pods that should be scheduled on those nodes.
 
-**Question 8.4:**  
+## 11. Implementing Canary Deployments
+**Question :**  
 Your team needs to implement a canary deployment for a new version of your application. How would you set this up in Kubernetes?
 
 **Answer:**  
@@ -349,7 +392,8 @@ I would implement a canary deployment using multiple Deployments with different 
 - Gradually increase the canary replicas and decrease stable replicas as confidence builds.
 - For more advanced canary deployments, use a service mesh like Istio.
 
-**Question 8.5:**  
+## 12. Running Parallel Jobs
+**Question :**  
 You need to run a job that processes data in parallel across multiple Pods. How would you implement this in Kubernetes?
 
 **Answer:**  
