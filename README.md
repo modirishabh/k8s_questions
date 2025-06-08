@@ -29,6 +29,15 @@ This is likely a resource constraint issue where Pods are being OOM (Out of Memo
 - Look for OOMKilled or eviction events.
 - Review resource metrics: `kubectl top pods` and `kubectl top nodes`.
 - Adjust resource requests and limits in the deployment YAML.
+```
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "100m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"
+```
 - Consider implementing Horizontal Pod Autoscaler (HPA).
 - If node resources are exhausted, scale the cluster by adding more nodes.
 
