@@ -349,14 +349,50 @@ I would follow a systematic approach to identify and resolve the Pod crashing is
 
 **Troubleshooting steps:**
 - Check the Pod status and restart count.
+```
+kubectl get pods
+```
 - Examine Pod events and logs.
+```
+kubectl describe pod <pod-name>
+kubectl logs <pod-name> --previous
+```
 - Look for common issues like OOMKilled, CrashLoopBackOff, Error/ImagePullBackOff.
 - Check resource utilization.
+```
+kubectl top pod <pod-name>
+```
 - Debug with an ephemeral container if necessary.
+```
+kubectl debug -it <pod-name> --image=busybox:1.28 --target=<container-name>
+```
 
 **Common solutions:**
 - Adjust resource limits if OOM killed.
+```
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "100m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"
+```
 - Add proper liveness and readiness probes.
+```
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+  initialDelaySeconds: 15
+  periodSeconds: 10
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 5
+```
 - Fix application code or configuration issues identified in logs.
 
 ## 10. Restricting Pod Scheduling
@@ -369,14 +405,53 @@ I would use a combination of node selectors, affinity/anti-affinity rules, and t
 
 **Using Node Selectors (simplest approach):**
 - Label the nodes.
+```
+kubectl label nodes node1 workload=frontend
+```
 - Use `nodeSelector` in the Pod spec.
+```
+spec:
+  nodeSelector:
+    workload: frontend
+```
 
 **Using Node Affinity (more flexible):**
 - Define node affinity rules in the Pod spec.
+```
+spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: workload
+            operator: In
+            values:
+            - frontend
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        preference:
+          matchExpressions:
+          - key: instance-type
+            operator: In
+            values:
+            - high-memory
+```
 
 **Using Taints and Tolerations:**
 - Taint the nodes.
+```
+kubectl taint nodes node1 dedicated=frontend:NoSchedule
+```
 - Add tolerations to Pods that should be scheduled on those nodes.
+```
+spec:
+  tolerations:
+  - key: "dedicated"
+    operator: "Equal"
+    value: "frontend"
+    effect: "NoSchedule"
+```
 
 ## 11. Implementing Canary Deployments
 **Question :**  
@@ -387,10 +462,83 @@ I would implement a canary deployment using multiple Deployments with different 
 
 **Implementation steps:**
 - Create a stable deployment with the current version.
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-stable
+spec:
+  replicas: 9
+  selector:
+    matchLabels:
+      app: myapp
+      version: stable
+  template:
+    metadata:
+      labels:
+        app: myapp
+        version: stable
+    spec:
+      containers:
+      - name: app
+        image: myapp:1.0
+```
 - Create a canary deployment with the new version.
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-canary
+spec:
+  replicas: 1  # 10% of total replicas
+  selector:
+    matchLabels:
+      app: myapp
+      version: canary
+  template:
+    metadata:
+      labels:
+        app: myapp
+        version: canary
+    spec:
+      containers:
+      - name: app
+        image: myapp:1.1
+```
 - Create a Service that selects both deployments.
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp
+spec:
+  selector:
+    app: myapp  # Selects both versions
+  ports:
+  - port: 80
+    targetPort: 8080
+```
 - Gradually increase the canary replicas and decrease stable replicas as confidence builds.
 - For more advanced canary deployments, use a service mesh like Istio.
+```
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: myapp
+spec:
+  hosts:
+  - myapp
+  http:
+  - route:
+    - destination:
+        host: myapp
+        subset: stable
+      weight: 90
+    - destination:
+        host: myapp
+        subset: canary
+      weight: 10
+```
 
 ## 12. Running Parallel Jobs
 **Question :**  
@@ -400,15 +548,48 @@ You need to run a job that processes data in parallel across multiple Pods. How 
 I would use a Kubernetes Job or CronJob with parallelism settings to process data concurrently.
 
 **Implementation for a one-time parallel job:**
+```
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: data-processor
+spec:
+  completions: 10    # Total number of successful Pod completions
+  parallelism: 3     # Number of Pods that can run in parallel
+  backoffLimit: 4    # Number of retries before job is considered failed
+  template:
+    spec:
+      containers:
+      - name: processor
+        image: data-processor:1.0
+        env:
+        - name: BATCH_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+      restartPolicy: Never
+```
 - Define the Job with parallelism and completions settings.
 - Use a template to specify the Pod configuration.
 
 **For recurring parallel jobs, use a CronJob:**
+```
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: data-processor-cron
+spec:
+  schedule: "0 2 * * *"  # Run daily at 2 AM
+  jobTemplate:
+    spec:
+      completions: 10
+      parallelism: 3
+      template:
+        spec:
+          containers:
+          - name: processor
+            image: data-processor:1.0
+          restartPolicy: Never
+```
 - Define the CronJob with a schedule and job template.
 - Specify parallelism in the job template.
-
-**For more complex workloads, consider using workflows or batch processing frameworks.**
-
----
-
-**Note:** These questions and answers are designed to cover key Kubernetes concepts and practical scenarios that are frequently asked by recruiters. Understanding these examples will help you demonstrate experience and problem-solving skills in Kubernetes during interviews.
