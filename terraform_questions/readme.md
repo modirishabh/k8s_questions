@@ -63,13 +63,17 @@ gsutil cp gs://terraform-state-bucket/terraform.tfstate#1234567890 ./terraform.t
 terraform init
 ```
 4. Use gcloud commands to inventory existing resources:
-``gcloud compute instances list --project=my-project # List Compute Instances
+``
+gcloud compute instances list --project=my-project # List Compute Instances
+
 gcloud sql instances list --project=my-project # List Cloud SQL instances
 ``
 5. Systematically import existing resources back into the state file:
 ``
 terraform import google_compute_instance.web_server projects/my-project/zones/us-central1-a/instances/web-server-01 # Import a Compute Instance
+
 terraform import google_sql_database_instance.main my-project:my-sql-instance # Import a Cloud SQL instance
+
 ``
 6. After recovery, implement proper state file backup procedures by configuring a GCS backend with versioning:
 ```
